@@ -2,18 +2,21 @@ extends layout
 
 block content
   
-  link(href="/bootstrap/css/signin.css" rel="stylesheet")
-  link(href="/bootstrap/css/bootstrap.min.css" rel="stylesheet")
-
   .container 
-    form.form-signin(method="post" action="#{base_url}/user/login")
-      h2.form-signin-heading Please #{title}
+    form.form-signin(method="post" action="/users/#{route}")
+      h2.form-signin-heading #{title}
       label.sr-only(for="inputEmail") Email address
       input#inputEmail.form-control(name="username" type="email" placeholder="Email address" required autofocus)
       label.sr-only(for="inputPassword" ) Password
       input#inputPassword.form-control(name="password" type="password" placeholder="Password" required)
-      .checkbox
-        label
-          input(name="remember" type="checkbox" value="remember-me") 
-          | Remember me
-      button.btn.btn-lg.btn-primary.btn-block(type="submit") Sign in
+      block more_input
+        .checkbox
+          label
+            input(name="remember" type="checkbox" value="remember-me") 
+            | Remember me
+      button.btn.btn-lg.btn-primary.btn-block(type="submit") #{title}
+    block more_options
+
+      .text-center Don't have an account? 
+      .text-center
+        a(href="/users/signup/" target="_self") Sign up

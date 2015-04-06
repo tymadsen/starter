@@ -3,8 +3,11 @@ html
   head
     title= title
     link(rel='stylesheet', href='/stylesheets/style.css')
-  //- - var css = ['one','two','three']
-  //- - for(var i = 0; i < css.length; i++)
-    link(rel='stylesheet', href="/stylesheets/#{css[i]}.css")
+  - if(css != undefined)
+    - for(var i = 0; i < css.length; i++)
+      link(rel='stylesheet', href="/stylesheets/#{css[i]}.css")
+  - if(js != undefined)
+    - for(var i = 0; i < js.length; i++)
+      script(src="/javascripts/#{js[i]}.js")
   body
     block content
