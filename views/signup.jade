@@ -1,10 +1,10 @@
 extends login
 
 block more_input
-  .has_error
-    p#err_message.control-label
-  label.sr-only(for="confirmPassword" ) Confirm Password
-  input#confirmPassword.form-control(name="confirm" type="password" placeholder="Confirm Password" required)
+  .form-group
+    label.control-label#err_message(for="confirmPassword")
+    label.sr-only.control-label(for="confirmPassword" ) Confirm Password
+    input#confirmPassword.form-control(name="confirm" type="password" placeholder="Confirm Password" required)
 block more_options
   .text-center
     a(href="/users/login/") Back to login

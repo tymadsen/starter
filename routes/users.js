@@ -1,6 +1,7 @@
 var express = require('express');
 var router = express.Router();
 var password_hash = require('password-hash');
+// var cookie_parser = require("cookie-parser");
 var mongodb = require('mongodb');
 var mongo_client = mongodb.MongoClient;
 var assert = require('assert');
@@ -14,9 +15,6 @@ router.get('/', function(req, res, next) {
 });
 /* GET login page. */
 router.get('/login', function(req, res, next) {
-  console.log(mongodb);
-  console.log('space');
-  console.log(mongo_client);
   res.render('login', {title:'Sign In', route:'existing', css:['bootstrap/bootstrap.min', 'bootstrap/signin'], base_url:base_url});
 });
 /* GET signup page. */
@@ -25,12 +23,10 @@ router.get('/signup', function(req, res, next) {
 });
 /* POST new user. */
 router.post('/new', function(req, res) {
-	console.log(req.body);
   //Hash PW
   var hashed_pw = password_hash.generate(req.body.password, {iterations:iterations});
-  // console.log(hashed_pw);
-  // res.send("Congrats! Your new password has been hashed: "+hashed_pw);
-  // console.log(password_hash.verify(req.body.password, hashed_pw));
+  var message = "";
+  var path = "login";
   
   //Check if user exists boefore adding
   mongo_client.connect(url, function(err, db){
@@ -38,37 +34,58 @@ router.post('/new', function(req, res) {
     console.log(err);
     console.log("Connected correctly to server");
     // var users = db.collection('users');
-    findDocuments(db, {email:req.body.username}, function(docs){
-      if(docs.length > 0){
+    userExists(db, req.body.username, function(exists){
+      // console.log(docs);
+      if(exists){
         //User already exists
-        console.log("User already exists")
+        message = "User already exists";
+        path = "signup";
         db.close();
       }else{
         //add to the db
         var data = {firstname:'',lastname:'',username:req.body.username,
         email:req.body.username,password:hashed_pw};
         insertDocuments(db, data, function(results){
+          message = "Account created successfully";
           db.close();
         });
       }
     });
   });
-  //render signup screen
-  res.render('signup', {title:'Create Account', route:'new', css:['bootstrap/bootstrap.min', 'bootstrap/signin'], js:['password_validator', 'jquery.min'], base_url:base_url});
-  //render login screen
-  // res.render('login', {title:'Sign In', route:'existing', css:['bootstrap/bootstrap.min', 'bootstrap/signin'], base_url:base_url});
+  //render signup/login screen
+  res.render(path, {title:'Create Account', message:message, route:'new', css:['bootstrap/bootstrap.min', 'bootstrap/signin'], js:['password_validator', 'jquery.min'], base_url:base_url});
 });
 /* POST login. */
 router.post('/existing', function(req, res) {
-  // res.render('signup', {title:'Create Account', route:'new', css:['bootstrap/bootstrap.min', 'bootstrap/signin'], js:['password_validator', 'jquery.min'], base_url:base_url});
+  var message = "";
+  //Check if user exists before adding
+  mongo_client.connect(url, function(err, db){
+    assert.equal(null, err);
+    // console.log(err);
+    console.log("Connected correctly to server");
+    // var users = db.collection('users');
+    login(db, {email:req.body.username}, req.body.password, function(status, message, cookie){
+      if(status){//user exists -- session data set
+        //render dashboard
+        console.log(cookie);
+        db.close();
+        res.cookie('user', cookie, {maxAge:900000, httpOnly:true});
+        res.redirect('/dashboard/');
+      }else{//user does not exist
+        res.redirect(200, base_url+"/users/login/");
+        db.close(); 
+      }
+      console.log(message);
+    });
+  });
 });
 
 module.exports = router;
 
-var findDocuments = function(db, find, callback, collection){
+var findDocuments = function(db, find, callback, col){
   find = typeof find == 'object' ? find : {};
-  collection = typeof collection == 'String' ? collection : "users";
-  var collection = db.collection(collection);
+  col = typeof col == 'string' ? col : "users";
+  var collection = db.collection(col);
   collection.find(find).toArray(function(err, docs){
     assert.equal(null,err);
     console.log("Found the following records");
@@ -77,13 +94,52 @@ var findDocuments = function(db, find, callback, collection){
   });
 }
 
-var insertDocuments = function(db, records, callback, collection){
+var userExists = function(db, username, callback, col){
+  username = typeof username == 'String' ? username : '';
+  col = typeof col == 'string' ? col : 'users';
+  var collection = db.collection(col);
+  collection.find(find).count(function(err, count){
+    assert.equal(null,err);
+    console.log("User "+username+" already exists");
+    callback(count>0);
+  });
+}
+
+var insertDocuments = function(db, records, callback, col){
   records = typeof records == 'object' ? records : {};
-  collection = typeof collection == 'String' ? collection : "users";
-  var collection = db.collection(collection);
+  col = typeof col == 'string' ? col : "users";
+  var collection = db.collection(col);
   collection.insert(records, function(err, results){
     assert.equal(null,err);
     console.log("Added user successfully");
     callback(results);
+  });
+}
+
+var login = function(db, find, pw, callback, col){
+  find = typeof find == 'object' ? find : {};
+  pw = typeof pw == 'string' ? pw : '';
+  col = typeof col == 'string' ? col : "users";
+  var collection = db.collection(col);
+  var message = "";
+  var status = null;
+  var cookie = {};
+  collection.find(find).toArray(function(err, docs){
+    assert.equal(null,err);
+    if(docs.length == 0){
+      message = "User does not exist";
+      status = false;
+    }else if(password_hash.verify(pw, docs[0].password)){//login
+      //set session data
+      var user = docs[0];
+      cookie = {id:user._id, username:user.username, email:user.email, firstname:user.firstname, lastname:user.lastname}, {maxAge:900000, httpOnly:true};
+      message = "Login successful";
+      console.log(message);
+      status = true;
+    }else{//incorrect password
+      status = false;
+      message = "Incorrect username or password";
+    }
+    callback(status, message, cookie);
   });
 }
