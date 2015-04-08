@@ -97,6 +97,7 @@ var findDocuments = function(db, find, callback, col){
 var userExists = function(db, username, callback, col){
   username = typeof username == 'String' ? username : '';
   col = typeof col == 'string' ? col : 'users';
+  var find = {username:username};
   var collection = db.collection(col);
   collection.find(find).count(function(err, count){
     assert.equal(null,err);
