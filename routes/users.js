@@ -15,18 +15,28 @@ router.get('/', function(req, res, next) {
 });
 /* GET login page. */
 router.get('/login', function(req, res, next) {
-  res.render('login', {title:'Sign In', route:'existing', css:['bootstrap/bootstrap.min', 'bootstrap/signin'], base_url:base_url});
+  var message = "";
+  var css = ['bootstrap/bootstrap.min', 'bootstrap/signin'];
+  var js = [];
+  if(req.cookies.message != undefined)
+    message = req.cookies.message;
+  res.render('login', {title:'Sign In', message:message, route:'existing', css:css, js:js, base_url:base_url});
 });
 /* GET signup page. */
 router.get('/signup', function(req, res, next) {
-  res.render('signup', {title:'Create Account', route:'new', css:['bootstrap/bootstrap.min', 'bootstrap/signin'], js:['password_validator', 'jquery.min'], base_url:base_url});
+  var message = "";
+  var css = ['bootstrap/bootstrap.min', 'bootstrap/signin'];
+  var js = ['password_validator'];
+  if(req.cookies.message != undefined)
+    message = req.cookies.message;
+  res.render('signup', {title:'Create Account', message:message, route:'new', css:css, js:js, base_url:base_url});
 });
 /* POST new user. */
 router.post('/new', function(req, res) {
   //Hash PW
   var hashed_pw = password_hash.generate(req.body.password, {iterations:iterations});
   var message = "";
-  var path = "login";
+  var path = "/users/login";
   
   //Check if user exists boefore adding
   mongo_client.connect(url, function(err, db){
@@ -39,7 +49,7 @@ router.post('/new', function(req, res) {
       if(exists){
         //User already exists
         message = "User already exists";
-        path = "signup";
+        path = "/users/signup";
         db.close();
       }else{
         //add to the db
@@ -53,7 +63,8 @@ router.post('/new', function(req, res) {
     });
   });
   //render signup/login screen
-  res.render(path, {title:'Create Account', message:message, route:'new', css:['bootstrap/bootstrap.min', 'bootstrap/signin'], js:['password_validator', 'jquery.min'], base_url:base_url});
+  res.cookie('message', message, {maxAge:4000, httpOnly:true});
+  res.redirect(path);
 });
 /* POST login. */
 router.post('/existing', function(req, res) {
@@ -69,11 +80,13 @@ router.post('/existing', function(req, res) {
         //render dashboard
         console.log(cookie);
         db.close();
+        res.cookie('message', message, {maxAge:4000, httpOnly:true});
         res.cookie('user', cookie, {maxAge:900000, httpOnly:true});
         res.redirect('/dashboard/');
       }else{//user does not exist
-        res.redirect(200, base_url+"/users/login/");
         db.close(); 
+        res.cookie('message', message, {maxAge:4000, httpOnly:true});
+        res.redirect("/users/login/");
       }
       console.log(message);
     });
@@ -132,7 +145,13 @@ var login = function(db, find, pw, callback, col){
     }else if(password_hash.verify(pw, docs[0].password)){//login
       //set session data
       var user = docs[0];
-      cookie = {id:user._id, username:user.username, email:user.email, firstname:user.firstname, lastname:user.lastname}, {maxAge:900000, httpOnly:true};
+      cookie = {
+        id:user._id, 
+        username:user.username, 
+        email:user.email, 
+        firstname:user.firstname, 
+        lastname:user.lastname
+      }, {maxAge:900000, httpOnly:true};
       message = "Login successful";
       console.log(message);
       status = true;

@@ -3,6 +3,9 @@ html
   head
     title= title
     link(rel='stylesheet', href='/stylesheets/style.css')
+    link(rel='stylesheet', href='/stylesheets/jquery.jgrowl.min.css')
+    script(src="/javascripts/jquery.min.js")
+    script(src="/javascripts/jquery.jgrowl.min.js")
   - if(css != undefined)
     - for(var i = 0; i < css.length; i++)
       link(rel='stylesheet', href="/stylesheets/#{css[i]}.css")
@@ -11,3 +14,23 @@ html
       script(src="/javascripts/#{js[i]}.js")
   body
     block content
+    block hidden
+      .message(hidden) #{message}
+      .jgrowl
+        style.
+          .jGrowl .error {
+            background-color: #FF0000;
+            color: white;
+          }
+          .jGrowl .success {
+            background-color: #00FF00;
+            color: white;
+          }
+          .jGrowl .message {
+            background-color: rgba(0, 45, 221, 0.74);
+            color: white;
+          }
+        script.
+          var msg = $('.message').text();
+          if(msg != "")
+            $.jGrowl(msg, {theme:'message'});
