@@ -41,30 +41,33 @@ router.post('/new', function(req, res) {
   //Check if user exists boefore adding
   mongo_client.connect(url, function(err, db){
     assert.equal(null, err);
-    console.log(err);
+    // console.log(err);
     console.log("Connected correctly to server");
-    // var users = db.collection('users');
+    // console.log(res);
+
     userExists(db, req.body.username, function(exists){
-      // console.log(docs);
+      console.log(exists);
       if(exists){
         //User already exists
         message = "User already exists";
         path = "/users/signup";
+        console.log(path);
         db.close();
       }else{
         //add to the db
         var data = {firstname:'',lastname:'',username:req.body.username,
-        email:req.body.username,password:hashed_pw};
+          email:req.body.username,password:hashed_pw};
         insertDocuments(db, data, function(results){
           message = "Account created successfully";
           db.close();
         });
       }
+      // console.log(path);
+      res.cookie('message', message, {maxAge:4000, httpOnly:true});
+      res.redirect(path);
     });
   });
   //render signup/login screen
-  res.cookie('message', message, {maxAge:4000, httpOnly:true});
-  res.redirect(path);
 });
 /* POST login. */
 router.post('/existing', function(req, res) {
@@ -108,14 +111,17 @@ var findDocuments = function(db, find, callback, col){
 }
 
 var userExists = function(db, username, callback, col){
-  username = typeof username == 'String' ? username : '';
+  username = typeof username == 'string' ? username : '';
   col = typeof col == 'string' ? col : 'users';
   var find = {username:username};
   var collection = db.collection(col);
+  console.log(find);
   collection.find(find).count(function(err, count){
     assert.equal(null,err);
     console.log("User "+username+" already exists");
+    console.log(count);
     callback(count>0);
+
   });
 }
 
